@@ -1,0 +1,19 @@
+[Unit]
+Description=NannyCam motion-triggered recorder
+After=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/NannyCam
+ExecStart=/usr/bin/python3 /home/pi/NannyCam/main.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+Environment=PYTHONUNBUFFERED=1
+SupplementaryGroups=gpio video
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

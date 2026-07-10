@@ -1,0 +1,17 @@
+motion:
+  pir_pin: 17                  # BCM GPIO pin for HC-SR501
+  framediff_threshold: 0.02    # fraction of pixels that must change to confirm motion
+  framediff_fps: 2.0           # frames/sec captured for diff (keep low for CPU budget)
+  framediff_resolution: [640, 480]
+  cooldown_seconds: 10         # continue recording this long after last motion event
+
+recording:
+  segment_dir: /footage
+  segment_duration: 60         # seconds per H.264 chunk (libcamera-vid --segment)
+  width: 1920
+  height: 1080
+  framerate: 30
+
+storage:
+  quota_bytes: 107374182400    # 100 GB
+  poll_interval_seconds: 30

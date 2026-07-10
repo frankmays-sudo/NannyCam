@@ -1,0 +1,24 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      ".git": false
+    },
+    "python.defaultInterpreterPath": "/usr/bin/python3",
+    "editor.formatOnSave": true,
+    "editor.rulers": [88]
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.black-formatter",
+      "ms-vscode.cmake-tools"
+    ]
+  }
+}
