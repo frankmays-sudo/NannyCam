@@ -4,9 +4,9 @@ After=multi-user.target
 
 [Service]
 Type=simple
-User=pi
-WorkingDirectory=/home/pi/NannyCam
-ExecStart=/usr/bin/python3 /home/pi/NannyCam/main.py
+User=spacecamel
+WorkingDirectory=/home/spacecamel/NannyCam
+ExecStart=/usr/bin/python3 /home/spacecamel/NannyCam/main.py
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=10
