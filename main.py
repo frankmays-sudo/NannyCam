@@ -5,9 +5,9 @@ Reads config/settings.yaml, wires up all components, and blocks until
 SIGINT or SIGTERM.
 
 Camera handoff:
-  FrameDiff holds the camera (via picamera2) while idle.  Because libcamera-vid
+  FrameDiff holds the camera (via picamera2) while idle.  Because rpicam-vid
   takes exclusive camera access, the on_start hook stops FrameDiff before
-  recording begins, and the on_stop hook restarts it after libcamera-vid exits.
+  recording begins, and the on_stop hook restarts it after rpicam-vid exits.
 
 Shutdown order:
   recorder.stop() first — triggers the on_stop hook so framediff is restarted

@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class Recorder:
-    """Manages a libcamera-vid subprocess that writes segmented H.264 footage.
+    """Manages a rpicam-vid subprocess that writes segmented H.264 footage.
 
     Call on_motion() on each confirmed motion event. Recording starts on the
     first call and continues until cooldown_seconds have elapsed with no new
@@ -34,8 +34,8 @@ class Recorder:
         self._width = width
         self._height = height
         self._framerate = framerate
-        self._on_start = on_start  # called before libcamera-vid launches (e.g. framediff.stop)
-        self._on_stop = on_stop    # called after libcamera-vid exits   (e.g. framediff.start)
+        self._on_start = on_start  # called before rpicam-vid launches (e.g. framediff.stop)
+        self._on_stop = on_stop    # called after rpicam-vid exits     (e.g. framediff.start)
         self._proc: subprocess.Popen | None = None
         self._timer: threading.Timer | None = None
         self._lock = threading.Lock()
@@ -64,18 +64,24 @@ class Recorder:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         output = str(self._segment_dir / f"{ts}_%04d.h264")
         cmd = [
-            "libcamera-vid",
+            "rpicam-vid",
             "--nopreview",
             "--codec", "h264",
             "--inline",          # embed SPS/PPS in each segment for independent playback
-            "--segment", str(self._segment_duration * 1000),  # libcamera-vid uses ms
+            "--segment", str(self._segment_duration * 1000),  # rpicam-vid uses ms
             "--output", output,
             "--timeout", "0",    # run until explicitly stopped
             "--width", str(self._width),
             "--height", str(self._height),
             "--framerate", str(self._framerate),
         ]
-        self._proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            self._proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except OSError:
+            logger.exception("Failed to launch rpicam-vid — restoring camera to framediff")
+            if self._on_stop:
+                self._on_stop()
+            raise
         logger.info("Recording started (pid %d): %s", self._proc.pid, output)
 
     def _stop_locked(self) -> None:

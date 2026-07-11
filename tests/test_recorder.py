@@ -93,12 +93,12 @@ def test_kill_used_when_terminate_times_out(MockPopen, MockTimer):
 
 @patch("src.recording.recorder.threading.Timer")
 @patch("src.recording.recorder.subprocess.Popen")
-def test_libcamera_command_contains_expected_flags(MockPopen, MockTimer):
+def test_rpicam_command_contains_expected_flags(MockPopen, MockTimer):
     MockTimer.return_value = MagicMock()
     r = make_recorder(segment_dir="/footage", segment_duration=60, width=1920, height=1080, framerate=30)
     r.on_motion()
     cmd = MockPopen.call_args[0][0]
-    assert "libcamera-vid" in cmd
+    assert "rpicam-vid" in cmd
     assert "--codec" in cmd and "h264" in cmd
     assert "--inline" in cmd
     assert "--nopreview" in cmd
@@ -148,3 +148,18 @@ def test_on_stop_hook_called_after_subprocess_exits(MockPopen, MockTimer):
 
     mock_proc.terminate.assert_called_once()
     on_stop.assert_called_once()
+
+
+@patch("src.recording.recorder.threading.Timer")
+@patch("src.recording.recorder.subprocess.Popen")
+def test_failed_launch_restores_camera_via_on_stop(MockPopen, MockTimer):
+    MockPopen.side_effect = OSError("rpicam-vid not found")
+    MockTimer.return_value = MagicMock()
+    on_stop = MagicMock()
+
+    r = make_recorder(on_stop=on_stop)
+    with pytest.raises(OSError):
+        r.on_motion()
+
+    on_stop.assert_called_once()
+    assert r._proc is None
