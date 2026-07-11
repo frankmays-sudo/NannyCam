@@ -1,5 +1,5 @@
 picamera2
-RPi.GPIO
+rpi-lgpio
 numpy
 PyYAML
 pytest
