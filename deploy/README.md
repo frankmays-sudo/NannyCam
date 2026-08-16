@@ -70,7 +70,15 @@ Steps:
    ```sh
    python3 -c "import hashlib;print(hashlib.sha256(b'yourpassword').hexdigest())"
    ```
-   Put it in `config/settings.yaml` under `gui.password_hash`.
+   Put it in `config/settings.yaml` under `gui.password_hash`, **directly on
+   the Pi only — do not commit it**. This repo is public on GitHub, and a
+   committed SHA-256 hash is a real offline brute-force target. Git will
+   keep showing `config/settings.yaml` as locally modified on the Pi
+   forever, which is expected. This means a future `git pull` can fail with
+   "local changes would be overwritten" if an upstream commit ever touches
+   the same lines in `settings.yaml` — if that happens, `git stash`, pull,
+   then `git stash pop` (or just re-apply the password_hash line by hand)
+   rather than discarding the local change.
 2. Install Flask (this Pi has no venv, matching the existing recorder
    service — plain system python3):
    ```sh
