@@ -1,0 +1,13 @@
+[Unit]
+Description=NannyCam USB CDC-NCM gadget (usb0)
+After=sys-kernel-config.mount
+Before=network-pre.target NetworkManager.service
+Wants=sys-kernel-config.mount
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/home/spacecamel/NannyCam/deploy/usb-gadget/ncm-gadget.sh
+
+[Install]
+WantedBy=multi-user.target

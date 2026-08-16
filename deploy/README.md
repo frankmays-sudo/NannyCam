@@ -22,29 +22,47 @@ ls /boot/config.txt            # older images — use whichever actually exists
 systemctl is-active NetworkManager   # or: systemctl is-active dhcpcd
 ```
 
+This uses a **CDC-NCM** gadget (via configfs + `nannycam-usb-gadget.service`),
+not the legacy `g_ether`/RNDIS module. Windows has had genuine inbox
+CDC-NCM support since Windows 10 — it binds automatically like any standard
+USB class device, no manual driver selection. (`g_ether`'s RNDIS function
+was tried first and ran into Windows repeatedly mis-binding it to the
+generic serial/modem driver instead of a NIC, with no reliable way to force
+the correct driver through Device Manager — see git history on this file
+if you need the details.)
+
 Steps:
 
 1. Append the contents of `deploy/usb-gadget/config.txt.append` to the real
    `config.txt` path confirmed above.
-2. Splice `modules-load=dwc2,g_ether` into the existing single line of the
-   real `cmdline.txt`, per the instructions in
+2. Splice `modules-load=dwc2` into the existing single line of the real
+   `cmdline.txt`, per the instructions in
    `deploy/usb-gadget/cmdline.txt.snippet`. Do not add a new line.
-3. Give `usb0` a static IP:
+3. Install and enable the gadget service:
+   ```sh
+   chmod +x deploy/usb-gadget/ncm-gadget.sh
+   sudo cp deploy/usb-gadget/nannycam-usb-gadget.service /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable nannycam-usb-gadget.service
+   ```
+4. Give `usb0` a static IP:
    - If `NetworkManager` is active: copy `deploy/usb-gadget/nm-usb0.sh` to the
-     Pi and run it (`sh nm-usb0.sh`).
+     Pi and run it with `sudo` (`sudo sh nm-usb0.sh` — `nmcli connection add`
+     needs root).
    - If `dhcpcd` is active: append `deploy/usb-gadget/dhcpcd-usb0.conf`'s
      contents to `/etc/dhcpcd.conf`.
-4. `sudo reboot`.
-5. After reboot, confirm the interface came up: `ip addr show usb0` should
+5. `sudo reboot`.
+6. After reboot, confirm the interface came up: `ip addr show usb0` should
    show `10.55.0.1/24`.
-6. Plug the USB cable into the Windows machine. Windows will enumerate a new
-   adapter (something like "Remote NDIS based Internet Sharing Device" or
-   "USB Ethernet/RNDIS Gadget" — check with `Get-NetAdapter` in PowerShell).
-   Give it a static IP once, one time:
+7. Plug the USB cable into the Windows machine (must be a data-capable
+   cable, not charge-only, and into the Pi's data USB port, not the
+   power-only port). Windows should enumerate a new network adapter
+   automatically within a few seconds — check with `Get-NetAdapter` in
+   PowerShell. Give it a static IP once, one time:
    ```powershell
    netsh interface ip set address name="<adapter name>" static 10.55.0.2 255.255.255.0
    ```
-7. Verify: `ping 10.55.0.1` from Windows should succeed.
+8. Verify: `ping 10.55.0.1` from Windows should succeed.
 
 ## 2. GUI setup
 
@@ -83,6 +101,11 @@ Log in with the shared password. Download or delete clips from the list.
   `10.55.0.1`.
 - **Adapter not enumerating on Windows**: try a different USB cable/port —
   some cables are charge-only. Check `Get-NetAdapter` after plugging in.
+- **Windows shows a device but not a network adapter**: confirm
+  `nannycam-usb-gadget.service` is actually active on the Pi
+  (`systemctl status nannycam-usb-gadget`) and that `g_ether` isn't also
+  loaded (`lsmod | grep g_ether` should be empty — if it's there,
+  `cmdline.txt` still has `g_ether` in `modules-load`).
 - **GUI can't delete files**: check `ls -la /footage` — it should be owned by
   `spacecamel`, the same user both `nannycam.service` and
   `nannycam-gui.service` run as. If ownership has drifted, fix with
