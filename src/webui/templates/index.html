@@ -10,7 +10,10 @@
 <h1>NannyCam Footage</h1>
 
 {% if segments %}
-<p><button type="button" onclick="downloadSelected()">Download Selected</button></p>
+<p>
+  <button type="button" onclick="downloadSelected()">Download Selected</button>
+  <button type="button" onclick="deleteSelected()">Delete Selected</button>
+</p>
 <table>
   <thead>
     <tr><th><input type="checkbox" onclick="toggleAll(this)"></th><th>Name</th><th>Recorded</th><th>Size</th><th></th><th></th></tr>
@@ -41,8 +44,7 @@
   }
 
   function downloadSelected() {
-    var names = Array.prototype.slice.call(document.querySelectorAll('.segment-checkbox:checked'))
-      .map(function (cb) { return cb.value; });
+    var names = getSelectedNames();
     names.forEach(function (name, i) {
       setTimeout(function () {
         var a = document.createElement('a');
@@ -52,6 +54,23 @@
         a.click();
         a.remove();
       }, i * 400);
+    });
+  }
+
+  function getSelectedNames() {
+    return Array.prototype.slice.call(document.querySelectorAll('.segment-checkbox:checked'))
+      .map(function (cb) { return cb.value; });
+  }
+
+  function deleteSelected() {
+    var names = getSelectedNames();
+    if (names.length === 0) return;
+    if (!confirm('Delete ' + names.length + ' selected file(s)? This cannot be undone.')) return;
+
+    Promise.all(names.map(function (name) {
+      return fetch('/delete/' + encodeURIComponent(name), { method: 'POST' });
+    })).then(function () {
+      window.location.reload();
     });
   }
 </script>
