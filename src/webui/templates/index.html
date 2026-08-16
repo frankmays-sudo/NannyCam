@@ -1,0 +1,36 @@
+<title>NannyCam Footage</title>
+<style>
+  body { font-family: sans-serif; margin: 2rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; padding: 0.5rem 1rem; border-bottom: 1px solid #ccc; }
+  form { display: inline; margin: 0; }
+  button { cursor: pointer; }
+</style>
+
+<h1>NannyCam Footage</h1>
+
+{% if segments %}
+<table>
+  <thead>
+    <tr><th>Name</th><th>Recorded</th><th>Size</th><th></th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for segment in segments %}
+    <tr>
+      <td>{{ segment.name }}</td>
+      <td>{{ segment.mtime | datetimeformat }}</td>
+      <td>{{ segment.size_bytes | filesizeformat }}</td>
+      <td><a href="{{ url_for('download', filename=segment.name) }}">Download</a></td>
+      <td>
+        <form method="post" action="{{ url_for('delete', filename=segment.name) }}"
+              onsubmit="return confirm('Delete {{ segment.name }}?');">
+          <button type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p>No footage segments found.</p>
+{% endif %}

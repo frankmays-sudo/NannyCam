@@ -12,7 +12,7 @@ Raspberry Pi Zero 2 W nanny cam. Records on motion, stores footage in a circular
 
 ## Stack
 
-Python 3 + `picamera2` + `RPi.GPIO` + `ffmpeg`. Keep processing lightweight — the Zero 2 W cannot handle heavy CV workloads.
+Python 3 + `picamera2` + `RPi.GPIO` + `ffmpeg` + `Flask` (footage GUI). Keep processing lightweight — the Zero 2 W cannot handle heavy CV workloads.
 
 ## Project Layout
 
@@ -21,7 +21,9 @@ src/
   motion/      # PIR GPIO handling + software frame-diff validation
   recording/   # rpicam-vid / ffmpeg pipeline, segmented H.264
   storage/     # circular overwrite daemon, quota enforcement
+  webui/       # Flask GUI to browse/download/delete footage (separate systemd service)
 config/        # runtime config (thresholds, paths, quota)
+deploy/        # systemd units + USB gadget networking setup (deploy/README.md)
 tests/
 ```
 

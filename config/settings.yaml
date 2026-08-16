@@ -15,3 +15,9 @@ recording:
 storage:
   quota_bytes: 107374182400    # 100 GB
   poll_interval_seconds: 30
+
+gui:
+  host: 0.0.0.0                # bind all interfaces — reachable via usb0 and WiFi
+  port: 8080
+  password_hash: "REPLACE_ME"  # sha256 hex digest — generate your own with:
+                                #   python3 -c "import hashlib;print(hashlib.sha256(b'yourpassword').hexdigest())"

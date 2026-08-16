@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.storage.ring import StorageRing, enforce_quota
+from src.storage.ring import StorageRing, enforce_quota, list_segments
 
 
 # ---------------------------------------------------------------------------
@@ -102,6 +102,42 @@ def test_missing_file_during_unlink_does_not_raise(tmp_path, monkeypatch):
     monkeypatch.setattr(Path, "unlink", unlink_that_raises)
     deleted = enforce_quota(tmp_path, 500)  # must not raise
     assert deleted == []
+
+
+# ---------------------------------------------------------------------------
+# list_segments — pure function tests using real temp dirs
+# ---------------------------------------------------------------------------
+
+def test_list_segments_nonexistent_dir_returns_empty(tmp_path):
+    assert list_segments(tmp_path / "missing") == []
+
+
+def test_list_segments_empty_dir_returns_empty(tmp_path):
+    assert list_segments(tmp_path) == []
+
+
+def test_list_segments_ignores_non_h264_files(tmp_path):
+    make_segment(tmp_path, "a.h264", 100, age_seconds=10)
+    (tmp_path / "thumb.jpg").write_bytes(b"\x00" * 900)
+    segments = list_segments(tmp_path)
+    assert [s.name for s in segments] == ["a.h264"]
+
+
+def test_list_segments_returns_oldest_first(tmp_path):
+    old = make_segment(tmp_path, "old.h264", 100, age_seconds=20)
+    new = make_segment(tmp_path, "new.h264", 100, age_seconds=5)
+    segments = list_segments(tmp_path)
+    assert [s.path for s in segments] == [old, new]
+
+
+def test_list_segments_fields_match_stat(tmp_path):
+    p = make_segment(tmp_path, "a.h264", 321, age_seconds=15)
+    [segment] = list_segments(tmp_path)
+    st = p.stat()
+    assert segment.path == p
+    assert segment.name == "a.h264"
+    assert segment.size_bytes == st.st_size == 321
+    assert segment.mtime == st.st_mtime
 
 
 # ---------------------------------------------------------------------------

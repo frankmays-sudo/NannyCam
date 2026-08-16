@@ -1,8 +1,37 @@
 import logging
 import threading
+from dataclasses import dataclass
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class Segment:
+    path: Path
+    name: str
+    size_bytes: int
+    mtime: float
+
+
+def list_segments(segment_dir: Path) -> list[Segment]:
+    """Return all .h264 segments in segment_dir, oldest first.
+
+    Skips files that vanish mid-stat (e.g. concurrently rotated by rpicam-vid).
+    """
+    if not segment_dir.is_dir():
+        return []
+
+    out: list[Segment] = []
+    for p in segment_dir.glob("*.h264"):
+        try:
+            st = p.stat()
+            out.append(Segment(path=p, name=p.name, size_bytes=st.st_size, mtime=st.st_mtime))
+        except FileNotFoundError:
+            pass
+
+    out.sort(key=lambda s: s.mtime)  # oldest first
+    return out
 
 
 def enforce_quota(segment_dir: Path, quota_bytes: int) -> list[Path]:
@@ -11,38 +40,27 @@ def enforce_quota(segment_dir: Path, quota_bytes: int) -> list[Path]:
     The most-recently-modified file is always protected from deletion because
     libcamera-vid may still be writing to it.  Returns the list of deleted paths.
     """
-    if not segment_dir.is_dir():
-        return []
+    segments = list_segments(segment_dir)
 
-    entries: list[tuple[float, int, Path]] = []
-    for p in segment_dir.glob("*.h264"):
-        try:
-            st = p.stat()
-            entries.append((st.st_mtime, st.st_size, p))
-        except FileNotFoundError:
-            pass
-
-    entries.sort()  # oldest mtime first
-
-    if len(entries) <= 1:
+    if len(segments) <= 1:
         return []  # never delete the only remaining file
 
-    total = sum(size for _, size, _ in entries)
+    total = sum(s.size_bytes for s in segments)
     if total <= quota_bytes:
         return []
 
     deleted: list[Path] = []
-    candidates = entries[:-1]  # exclude newest — may be actively written
-    for _, size, path in candidates:
+    candidates = segments[:-1]  # exclude newest — may be actively written
+    for seg in candidates:
         if total <= quota_bytes:
             break
         try:
-            path.unlink()
-            deleted.append(path)
-            logger.info("Deleted segment %s (%d bytes)", path.name, size)
+            seg.path.unlink()
+            deleted.append(seg.path)
+            logger.info("Deleted segment %s (%d bytes)", seg.name, seg.size_bytes)
         except FileNotFoundError:
             pass
-        total -= size  # deduct regardless — file is gone either way
+        total -= seg.size_bytes  # deduct regardless — file is gone either way
 
     return deleted
 

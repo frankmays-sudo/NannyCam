@@ -1,0 +1,6 @@
+# Append to the Pi's boot config (verify the real path first — see deploy/README.md,
+# it's /boot/firmware/config.txt on recent Raspberry Pi OS, /boot/config.txt on older).
+# Enables the USB OTG controller (dwc2) so the Pi can present itself as a USB
+# Ethernet gadget over its micro-USB port.
+
+dtoverlay=dwc2

@@ -3,3 +3,4 @@ rpi-lgpio
 numpy
 PyYAML
 pytest
+Flask
