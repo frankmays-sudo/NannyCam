@@ -18,6 +18,7 @@ from pathlib import Path
 import yaml
 from flask import Flask, Response, abort, redirect, render_template, request, send_from_directory, url_for
 
+from src.power.pisugar import read_battery_status
 from src.storage.ring import list_segments
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,8 @@ def create_app(config: dict) -> Flask:
     app = Flask(__name__)
     app.config["SEGMENT_DIR"] = Path(config["recording"]["segment_dir"])
     app.config["GUI_PASSWORD_HASH"] = config["gui"]["password_hash"]
+    app.config["POWER_SOCKET_PATH"] = config["power"]["socket_path"]
+    app.config["LOW_BATTERY_PERCENT"] = config["power"]["low_battery_percent"]
 
     @app.template_filter("datetimeformat")
     def datetimeformat(mtime: float) -> str:
@@ -68,7 +71,13 @@ def create_app(config: dict) -> Flask:
     def index():
         segments = list_segments(app.config["SEGMENT_DIR"])
         segments = sorted(segments, key=lambda s: s.mtime, reverse=True)
-        return render_template("index.html", segments=segments)
+        battery = read_battery_status(app.config["POWER_SOCKET_PATH"], timeout=1.0)
+        return render_template(
+            "index.html",
+            segments=segments,
+            battery=battery,
+            low_battery_percent=app.config["LOW_BATTERY_PERCENT"],
+        )
 
     @app.route("/download/<path:filename>")
     @requires_auth

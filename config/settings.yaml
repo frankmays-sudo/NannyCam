@@ -16,6 +16,11 @@ storage:
   quota_bytes: 107374182400    # 100 GB
   poll_interval_seconds: 30
 
+power:
+  socket_path: /tmp/pisugar-server.sock
+  poll_interval_seconds: 60
+  low_battery_percent: 20      # log a warning once battery drops below this (only while unplugged)
+
 gui:
   host: 0.0.0.0                # bind all interfaces — reachable via usb0 and WiFi
   port: 8080

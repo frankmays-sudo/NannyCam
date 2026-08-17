@@ -5,9 +5,19 @@
   th, td { text-align: left; padding: 0.5rem 1rem; border-bottom: 1px solid #ccc; }
   form { display: inline; margin: 0; }
   button { cursor: pointer; }
+  .battery-low { color: #b00020; font-weight: bold; }
 </style>
 
 <h1>NannyCam Footage</h1>
+
+{% if battery %}
+<p{% if battery.percent < low_battery_percent and not battery.power_plugged %} class="battery-low"{% endif %}>
+  Battery: {{ "%.1f"|format(battery.percent) }}%
+  {%- if battery.charging %} (charging){% elif battery.power_plugged %} (plugged in){% endif %}
+</p>
+{% else %}
+<p>Battery status unavailable</p>
+{% endif %}
 
 {% if segments %}
 <p>

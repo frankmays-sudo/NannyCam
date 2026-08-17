@@ -1,12 +1,25 @@
+import contextlib
 import hashlib
 import os
+import socket
+import tempfile
+import threading
 import time
+import uuid
 from pathlib import Path
+
+import pytest
 
 from src.webui.app import create_app
 
 PASSWORD = "testpass"
 PASSWORD_HASH = hashlib.sha256(PASSWORD.encode()).hexdigest()
+
+# Some Windows Python builds lack socket.AF_UNIX entirely; the deployment
+# target (Linux) always has it. See tests/test_pisugar.py for the same guard.
+requires_af_unix = pytest.mark.skipif(
+    not hasattr(socket, "AF_UNIX"), reason="socket.AF_UNIX not available on this platform"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -21,11 +34,49 @@ def make_segment(directory: Path, name: str, size: int = 10, age_seconds: float 
     return p
 
 
+def make_socket_path() -> str:
+    # A short path outside tmp_path's deep pytest nesting -- AF_UNIX paths
+    # are limited to ~108 chars on both Linux and Windows.
+    return str(Path(tempfile.gettempdir()) / f"pisugar-test-{uuid.uuid4().hex[:8]}.sock")
+
+
+@contextlib.contextmanager
+def fake_pisugar_server(socket_path: str, response: bytes):
+    srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    srv.bind(socket_path)
+    srv.listen(1)
+
+    def serve():
+        try:
+            conn, _ = srv.accept()
+        except OSError:
+            return
+        with conn:
+            conn.recv(4096)
+            conn.sendall(response)
+
+    thread = threading.Thread(target=serve, daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        srv.close()
+        thread.join(timeout=2)
+        try:
+            os.unlink(socket_path)
+        except FileNotFoundError:
+            pass
+
+
 def make_client(tmp_path):
     app = create_app(
         {
             "recording": {"segment_dir": str(tmp_path)},
             "gui": {"password_hash": PASSWORD_HASH},
+            "power": {
+                "socket_path": str(tmp_path / "no-such-pisugar.sock"),
+                "low_battery_percent": 20,
+            },
         }
     )
     app.testing = True
@@ -122,3 +173,65 @@ def test_delete_path_traversal_rejected(tmp_path):
     resp = client.post("/delete/../secret.txt", auth=("x", PASSWORD))
     assert resp.status_code == 404
     assert secret.exists()
+
+
+# ---------------------------------------------------------------------------
+# Battery status
+# ---------------------------------------------------------------------------
+
+def test_index_shows_battery_unavailable_without_pisugar(tmp_path):
+    client = make_client(tmp_path)
+    resp = client.get("/", auth=("x", PASSWORD))
+    assert b"Battery status unavailable" in resp.data
+
+
+@requires_af_unix
+def test_index_shows_battery_percent(tmp_path):
+    sock_path = make_socket_path()
+    response = b"battery: 55.5\nbattery_charging: false\nbattery_power_plugged: false\n"
+    with fake_pisugar_server(sock_path, response):
+        app = create_app(
+            {
+                "recording": {"segment_dir": str(tmp_path)},
+                "gui": {"password_hash": PASSWORD_HASH},
+                "power": {"socket_path": sock_path, "low_battery_percent": 20},
+            }
+        )
+        app.testing = True
+        resp = app.test_client().get("/", auth=("x", PASSWORD))
+    assert b"55.5%" in resp.data
+
+
+@requires_af_unix
+def test_index_flags_low_battery(tmp_path):
+    sock_path = make_socket_path()
+    response = b"battery: 10.0\nbattery_charging: false\nbattery_power_plugged: false\n"
+    with fake_pisugar_server(sock_path, response):
+        app = create_app(
+            {
+                "recording": {"segment_dir": str(tmp_path)},
+                "gui": {"password_hash": PASSWORD_HASH},
+                "power": {"socket_path": sock_path, "low_battery_percent": 20},
+            }
+        )
+        app.testing = True
+        resp = app.test_client().get("/", auth=("x", PASSWORD))
+    assert b"battery-low" in resp.data
+
+
+@requires_af_unix
+def test_index_does_not_flag_low_battery_while_charging(tmp_path):
+    sock_path = make_socket_path()
+    response = b"battery: 10.0\nbattery_charging: true\nbattery_power_plugged: true\n"
+    with fake_pisugar_server(sock_path, response):
+        app = create_app(
+            {
+                "recording": {"segment_dir": str(tmp_path)},
+                "gui": {"password_hash": PASSWORD_HASH},
+                "power": {"socket_path": sock_path, "low_battery_percent": 20},
+            }
+        )
+        app.testing = True
+        resp = app.test_client().get("/", auth=("x", PASSWORD))
+    assert b"battery-low" not in resp.data
+    assert b"(charging)" in resp.data

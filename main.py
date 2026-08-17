@@ -24,6 +24,7 @@ import yaml
 from src.motion.detector import MotionDetector
 from src.motion.framediff import FrameDiff
 from src.motion.pir import PIRSensor
+from src.power.pisugar import BatteryMonitor
 from src.recording.recorder import Recorder
 from src.storage.ring import StorageRing
 
@@ -45,6 +46,7 @@ def main() -> None:
     m = cfg["motion"]
     r = cfg["recording"]
     s = cfg["storage"]
+    p = cfg["power"]
 
     framediff = FrameDiff(
         threshold=m["framediff_threshold"],
@@ -75,11 +77,18 @@ def main() -> None:
         poll_interval=s["poll_interval_seconds"],
     )
 
+    battery_monitor = BatteryMonitor(
+        socket_path=p["socket_path"],
+        low_battery_percent=p["low_battery_percent"],
+        poll_interval=p["poll_interval_seconds"],
+    )
+
     def shutdown(sig, _frame) -> None:
         logger.info("Shutting down (signal %d)", sig)
         recorder.stop()   # terminates libcamera-vid; on_stop restarts framediff
         detector.stop()   # removes PIR interrupt; stops framediff
         ring.stop()
+        battery_monitor.stop()
         sys.exit(0)
 
     signal.signal(signal.SIGINT, shutdown)
@@ -87,6 +96,7 @@ def main() -> None:
 
     logger.info("NannyCam starting")
     ring.start()
+    battery_monitor.start()
     detector.start()   # starts framediff then arms the PIR interrupt
     logger.info("NannyCam running — waiting for motion")
 
