@@ -1,10 +1,14 @@
 # NannyCam deployment
 
 Steps to set up the direct USB transfer link and the footage web GUI on
-`pizero01`, run from the Windows dev machine unless noted.
+`pizero01`, run from the Windows dev machine unless noted. For the initial
+physical hardware bring-up (wiring, OS flash, PiSugar/camera/PIR setup,
+`nannycam.service` install) — a separate, earlier step — see
+`deploy/hardware-bringup.md`.
 
 ## Prerequisites
 
+- Hardware bring-up already done (`deploy/hardware-bringup.md`).
 - SSH access to `pizero01` as `spacecamel`.
 - Repo already cloned at `/home/spacecamel/NannyCam` on the Pi, and up to date
   (`git pull`).
