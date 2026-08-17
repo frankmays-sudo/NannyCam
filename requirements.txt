@@ -1,6 +1,6 @@
-picamera2
-rpi-lgpio
-numpy
-PyYAML
-pytest
-Flask
+picamera2==0.3.36
+rpi-lgpio==0.6
+numpy==2.2.4
+PyYAML==6.0.2
+pytest==9.1.1
+Flask==3.1.3
