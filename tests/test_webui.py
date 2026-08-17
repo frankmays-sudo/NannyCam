@@ -216,7 +216,7 @@ def test_index_flags_low_battery(tmp_path):
         )
         app.testing = True
         resp = app.test_client().get("/", auth=("x", PASSWORD))
-    assert b"battery-low" in resp.data
+    assert b'class="battery-low"' in resp.data
 
 
 @requires_af_unix
@@ -233,5 +233,5 @@ def test_index_does_not_flag_low_battery_while_charging(tmp_path):
         )
         app.testing = True
         resp = app.test_client().get("/", auth=("x", PASSWORD))
-    assert b"battery-low" not in resp.data
+    assert b'class="battery-low"' not in resp.data
     assert b"(charging)" in resp.data
